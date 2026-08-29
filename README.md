@@ -35,3 +35,6 @@ python run_tests.py
 ```
 *(Runs 20,000 deterministic test cases and outputs the Expected Calibration Error)*
 
+
+## Output Sample (Claim-Level Verification UI)
+![UC-RAG Output Sample](output_sample.png)
