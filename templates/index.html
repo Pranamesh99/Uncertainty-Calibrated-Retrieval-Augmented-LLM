@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom LLM RAG System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f3f4f6;
+            --chat-bg: #ffffff;
+            --user-msg: #2563eb;
+            --user-text: #ffffff;
+            --ai-msg: #f8fafc;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --accent: #2563eb;
+            --border-color: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            background: var(--chat-bg);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .header {
+            padding: 20px;
+            background: #ffffff;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--accent);
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .chat-box {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            line-height: 1.5;
+            font-size: 1rem;
+            animation: fadeIn 0.3s ease-in;
+            border: 1px solid transparent;
+        }
+
+        .user-message {
+            background: var(--user-msg);
+            color: var(--user-text);
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+            box-shadow: 0 2px 5px rgba(37, 99, 235, 0.2);
+        }
+
+        .ai-message {
+            background: var(--ai-msg);
+            color: var(--text-main);
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+            border-color: var(--border-color);
+        }
+
+        .rag-context {
+            font-size: 0.85rem;
+            color: #047857;
+            background: #ecfdf5;
+            padding: 12px;
+            border-left: 4px solid #10b981;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            display: none;
+            border-top: 1px solid #d1fae5;
+            border-right: 1px solid #d1fae5;
+            border-bottom: 1px solid #d1fae5;
+        }
+        
+        .rag-context hr {
+            border: 0; 
+            border-top: 1px solid #a7f3d0; 
+            margin: 10px 0;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: #ffffff;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            background: #ffffff;
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        button {
+            padding: 0 20px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .typing-indicator {
+            display: none;
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 0.9rem;
+            align-self: flex-start;
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="header">
+            <h2><i class="fas fa-shield-alt"></i> UC-RAG System</h2>
+            <p>Uncertainty-Calibrated Retrieval-Augmented LLM with Evidence Verification</p>
+        </div>
+        
+        <div class="chat-box" id="chat-box">
+            <div class="message ai-message">
+                Hello! I am your Uncertainty-Calibrated Large Language Model. Ask me a question, and I will mathematically verify my claims against the retrieved evidence to prevent hallucinations!
+            </div>
+        </div>
+        
+        <div class="typing-indicator" id="typing">
+            <i class="fas fa-circle-notch fa-spin"></i> Neural Network is generating answer...
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Ask a question... (e.g. 'What is data science?')" onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById("chat-box");
+        const userInput = document.getElementById("user-input");
+        const typing = document.getElementById("typing");
+
+        function addMessage(sender, text, data = null) {
+            const div = document.createElement("div");
+            div.className = `message ${sender}-message`;
+            
+            if (data && sender === 'ai') {
+                let claimsHTML = "<ul>";
+                if (data.claim_verifications && data.claim_verifications.length > 0) {
+                    data.claim_verifications.forEach(c => {
+                        let color = c.status.includes("Supported") ? "#10b981" : (c.status.includes("Partially") ? "#f59e0b" : "#ef4444");
+                        claimsHTML += `<li style="color: ${color}"><b>${c.status}</b>: "${c.claim}"</li>`;
+                    });
+                } else {
+                    claimsHTML += "<li>No verifiable claims extracted.</li>";
+                }
+                claimsHTML += "</ul>";
+                
+                div.innerHTML = `
+                    <div class="rag-context">
+                        <i class="fas fa-search"></i> <b>Evidence Retrieved:</b><br>${data.context}
+                        <hr style="border: 0; border-top: 1px solid #10b981; opacity: 0.3; margin: 8px 0;">
+                        <i class="fas fa-shield-alt"></i> <b>Claim-Level Verification:</b>
+                        ${claimsHTML}
+                        <hr style="border: 0; border-top: 1px solid #10b981; opacity: 0.3; margin: 8px 0;">
+                        <i class="fas fa-chart-pie"></i> <b>Uncertainty Calibration:</b><br>
+                        Confidence: ${(data.confidence * 100).toFixed(1)}% | Uncertainty (U): ${(data.uncertainty * 100).toFixed(1)}%<br>
+                        <i class="fas fa-cogs"></i> <b>Adaptive Response:</b> ${data.behavior}
+                    </div>
+                    <strong>Answer:</strong> ${text}
+                `;
+                div.querySelector('.rag-context').style.display = 'block';
+            } else {
+                div.innerText = text;
+            }
+            
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const question = userInput.value.trim();
+            if (!question) return;
+
+            addMessage("user", question);
+            userInput.value = "";
+            typing.style.display = "block";
+
+            try {
+                const response = await fetch("/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ question: question })
+                });
+
+                const data = await response.json();
+                typing.style.display = "none";
+                addMessage("ai", data.answer, data);
+            } catch (error) {
+                typing.style.display = "none";
+                addMessage("ai", "Sorry, my server encountered an error.");
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
